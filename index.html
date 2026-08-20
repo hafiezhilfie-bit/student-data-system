@@ -1,0 +1,1770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Data System</title>
+  
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- SheetJS (Excel Export) Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background-color: #f0f2f5;
+      padding: 20px;
+    }
+    #mainApp {
+      display: none;
+    }
+    
+    .container, .modal-content {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .container::before, .modal-content::before {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 80%;
+      height: 80%;
+      background-image: url('background.png');
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: contain;
+      opacity: 0.10;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container *, .modal-content * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: auto;
+      background: #ffffff;
+      padding: 25px;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+    .header-title {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #f0f2f5;
+      padding-bottom: 15px;
+    }
+    .logo {
+      width: 75px;
+      height: 75px;
+      object-fit: contain;
+    }
+    h2 {
+      color: #1a73e8;
+      font-size: 22px;
+    }
+    .nav-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .tab-btn {
+      padding: 10px 20px;
+      border: none;
+      background: #e4e6eb;
+      color: #333;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: 0.2s;
+    }
+    .tab-btn.active {
+      background: #1a73e8;
+      color: white;
+    }
+    .view-section {
+      display: none;
+    }
+    .view-section.active {
+      display: block;
+    }
+    .form-group {
+      margin-bottom: 15px;
+      display: flex;
+      flex-direction: column;
+      text-align: left;
+    }
+    .form-group-checkbox {
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .form-group-checkbox label {
+      margin-bottom: 0;
+      cursor: pointer;
+    }
+    .form-group-checkbox input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+    label {
+      font-size: 13px;
+      font-weight: bold;
+      margin-bottom: 5px;
+      color: #555;
+    }
+    input[type="text"], input[type="password"], input[type="date"], input[type="tel"], input[type="number"], select, textarea {
+      padding: 10px;
+      border: 1px solid #cccccc;
+      border-radius: 5px;
+      font-size: 14px;
+      outline: none;
+      background-color: rgba(255, 255, 255, 0.9);
+      width: 100%;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: #1a73e8;
+      box-shadow: 0 0 5px rgba(26, 115, 232, 0.3);
+    }
+    .btn-container {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .btn {
+      padding: 10px 15px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 14px;
+      text-align: center;
+      text-decoration: none;
+      transition: 0.2s;
+    }
+    .btn-submit {
+      background-color: #28a745;
+      color: white;
+      width: 100%;
+    }
+    .btn-submit:hover {
+      background-color: #218838;
+    }
+    .btn-export {
+      background-color: #17a2b8;
+      color: white;
+    }
+    .btn-export:hover {
+      background-color: #138496;
+    }
+    .btn-excel {
+      background-color: #28a745;
+      color: white;
+    }
+    .btn-excel:hover {
+      background-color: #218838;
+    }
+    .btn-warning {
+      background-color: #ffc107;
+      color: #212529;
+      padding: 5px 10px;
+      font-size: 12px;
+      margin-right: 5px;
+    }
+    .btn-warning:hover {
+      background-color: #e0a800;
+    }
+    .btn-danger {
+      background-color: #dc3545;
+      color: white;
+      padding: 5px 10px;
+      font-size: 12px;
+    }
+    .btn-danger:hover {
+      background-color: #c82333;
+    }
+    .header-buttons {
+      display: flex;
+      justify-content: flex-start;
+      gap: 10px;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+    }
+    .search-input {
+      width: 100%;
+      margin-bottom: 15px;
+    }
+
+    /* Grid Kartu Segi Empat */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 20px;
+    }
+    .student-card {
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 15px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      display: none;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .student-card.visible {
+      display: flex;
+    }
+    .card-header-info {
+      display: flex;
+      gap: 15px;
+      align-items: flex-start;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #eee;
+    }
+    .photo-2x2 {
+      width: 85px;
+      height: 85px;
+      object-fit: cover;
+      border-radius: 4px;
+      border: 2px solid #1a73e8;
+      background: #f0f0f0;
+      flex-shrink: 0;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .photo-2x2:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+    .card-title {
+      flex: 1;
+    }
+    .card-title h3 {
+      font-size: 16px;
+      color: #1a73e8;
+      margin-bottom: 6px;
+    }
+    .card-title p {
+      font-size: 12px;
+      color: #444;
+      margin-bottom: 3px;
+    }
+    .card-details {
+      font-size: 12px;
+      color: #444;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .card-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 5px;
+      border-top: 1px solid #f0f2f5;
+      padding-top: 10px;
+    }
+
+    /* Status Checklist Styling */
+    .status-checked {
+      color: #28a745;
+      font-weight: bold;
+    }
+    .status-unchecked {
+      color: #dc3545;
+      font-weight: bold;
+    }
+
+    /* Modal Styling */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.6);
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-content {
+      background-color: #fff;
+      padding: 25px;
+      border-radius: 10px;
+      width: 90%;
+      max-width: 500px;
+      max-height: 85vh;
+      overflow-y: auto;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+    #loginModal {
+      display: none;
+      background-color: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(3px);
+      z-index: 9999;
+    }
+
+    #publicEntryModal {
+      display: flex;
+      background-color: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(3px);
+      z-index: 10000;
+    }
+
+    .public-entry-btn {
+      width: 100%;
+      margin-top: 10px;
+      background: #6f42c1;
+      color: white;
+    }
+
+    .public-entry-btn:hover {
+      background: #59359a;
+    }
+
+    .public-entry-note {
+      font-size: 11px;
+      color: #777;
+      margin-top: 8px;
+      line-height: 1.4;
+    }
+    /* Modal Pratinjau Foto Full */
+    #imageViewerModal .modal-content {
+      background: transparent;
+      box-shadow: none;
+      text-align: center;
+      max-width: 90vw;
+      max-height: 90vh;
+      padding: 0;
+    }
+    #imageViewerModal img {
+      max-width: 100%;
+      max-height: 80vh;
+      border-radius: 8px;
+      border: 3px solid #ffffff;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+    }
+    .search-notice {
+      grid-column: 1/-1;
+      text-align: center;
+      padding: 30px 10px;
+      color: #777;
+      font-size: 14px;
+    }
+
+    /* ===== MODERN UI ENHANCEMENTS ===== */
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --success: #16a34a;
+      --danger: #dc2626;
+      --warning: #d97706;
+      --purple: #7c3aed;
+      --text: #172033;
+      --muted: #64748b;
+      --border: #dbe3ef;
+      --surface: #ffffff;
+      --surface-soft: #f8fafc;
+      --shadow: 0 12px 35px rgba(15, 23, 42, 0.10);
+    }
+
+    body {
+      background:
+        radial-gradient(circle at top left, rgba(37,99,235,.08), transparent 32%),
+        radial-gradient(circle at bottom right, rgba(124,58,237,.07), transparent 30%),
+        #f1f5f9;
+      color: var(--text);
+    }
+
+    .container, .modal-content {
+      border: 1px solid rgba(226,232,240,.9);
+      box-shadow: var(--shadow);
+    }
+
+    .modal-content {
+      animation: modalIn .22s ease-out;
+    }
+
+    @keyframes modalIn {
+      from { opacity: 0; transform: translateY(12px) scale(.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .header-title {
+      border-bottom-color: #e8edf5;
+    }
+
+    .header-title h2 {
+      letter-spacing: -0.3px;
+    }
+
+    .nav-tabs {
+      background: #f8fafc;
+      padding: 5px;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .tab-btn {
+      flex: 1;
+      border-radius: 8px;
+      background: transparent;
+      color: #475569;
+      min-height: 42px;
+    }
+
+    .tab-btn:hover {
+      background: #e2e8f0;
+      transform: translateY(-1px);
+    }
+
+    .tab-btn.active {
+      background: linear-gradient(135deg, var(--primary), #3b82f6);
+      box-shadow: 0 5px 14px rgba(37,99,235,.22);
+    }
+
+    .form-group {
+      gap: 2px;
+    }
+
+    label {
+      color: #334155;
+      font-size: 13px;
+      letter-spacing: .1px;
+    }
+
+    input[type="text"],
+    input[type="password"],
+    input[type="date"],
+    input[type="tel"],
+    input[type="number"],
+    input[type="file"],
+    select,
+    textarea {
+      min-height: 46px;
+      padding: 11px 13px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      color: #1e293b;
+      background: rgba(255,255,255,.96);
+      box-shadow: 0 1px 2px rgba(15,23,42,.03);
+      transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+    }
+
+    select {
+      appearance: none;
+      -webkit-appearance: none;
+      background-image:
+        linear-gradient(45deg, transparent 50%, #64748b 50%),
+        linear-gradient(135deg, #64748b 50%, transparent 50%);
+      background-position:
+        calc(100% - 18px) 20px,
+        calc(100% - 13px) 20px;
+      background-size: 5px 5px, 5px 5px;
+      background-repeat: no-repeat;
+      padding-right: 40px;
+      cursor: pointer;
+    }
+
+    input[type="file"] {
+      padding: 7px;
+      cursor: pointer;
+    }
+
+    input[type="file"]::file-selector-button {
+      border: 0;
+      border-radius: 7px;
+      padding: 8px 12px;
+      margin-right: 10px;
+      background: #eff6ff;
+      color: var(--primary);
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(37,99,235,.10);
+      transform: translateY(-1px);
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+      color: #94a3b8;
+    }
+
+    .btn {
+      min-height: 44px;
+      border-radius: 9px;
+      border: 1px solid transparent;
+      box-shadow: 0 4px 10px rgba(15,23,42,.08);
+      transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 7px 16px rgba(15,23,42,.13);
+      filter: brightness(1.02);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn:disabled {
+      opacity: .65;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-submit {
+      background: linear-gradient(135deg, #16a34a, #22c55e);
+      box-shadow: 0 6px 16px rgba(22,163,74,.20);
+    }
+
+    .btn-export {
+      background: linear-gradient(135deg, #0284c7, #06b6d4);
+    }
+
+    .btn-excel {
+      background: linear-gradient(135deg, #15803d, #22c55e);
+    }
+
+    .btn-warning {
+      background: linear-gradient(135deg, #f59e0b, #fbbf24);
+      color: #422006;
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #dc2626, #ef4444);
+    }
+
+    .public-entry-btn {
+      background: linear-gradient(135deg, #6d28d9, #8b5cf6);
+      box-shadow: 0 6px 16px rgba(109,40,217,.22);
+    }
+
+    .public-entry-note {
+      color: #64748b;
+    }
+
+    .form-group-checkbox {
+      padding: 8px 10px;
+      border: 1px solid #e2e8f0;
+      border-radius: 9px;
+      background: #f8fafc;
+      transition: background .18s ease, border-color .18s ease;
+    }
+
+    .form-group-checkbox:hover {
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+    }
+
+    .form-group-checkbox input[type="checkbox"] {
+      accent-color: var(--primary);
+    }
+
+    .student-card {
+      border-color: #e2e8f0;
+      box-shadow: 0 6px 18px rgba(15,23,42,.06);
+      transition: transform .18s ease, box-shadow .18s ease;
+    }
+
+    .student-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 26px rgba(15,23,42,.10);
+    }
+
+    .search-input {
+      border-radius: 9px !important;
+      min-height: 46px;
+    }
+
+    .header-buttons {
+      gap: 10px;
+    }
+
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20000;
+      width: min(92vw, 430px);
+      pointer-events: none;
+    }
+
+    .toast {
+      pointer-events: auto;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 15px 16px;
+      margin-bottom: 10px;
+      border-radius: 12px;
+      background: rgba(255,255,255,.98);
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 14px 35px rgba(15,23,42,.18);
+      animation: toastIn .25s ease-out;
+    }
+
+    .toast-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: white;
+      font-weight: 900;
+      flex: 0 0 34px;
+    }
+
+    .toast.success .toast-icon { background: #16a34a; }
+    .toast.error .toast-icon { background: #dc2626; }
+    .toast.warning .toast-icon { background: #d97706; }
+    .toast.info .toast-icon { background: #2563eb; }
+
+    .toast-title {
+      font-weight: 800;
+      color: #172033;
+      margin-bottom: 3px;
+    }
+
+    .toast-message {
+      color: #64748b;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .toast-close {
+      margin-left: auto;
+      border: 0;
+      background: transparent;
+      color: #94a3b8;
+      cursor: pointer;
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 600px) {
+      body { padding: 10px; }
+      .container { padding: 16px; }
+      .btn-container { flex-direction: column; }
+      .header-buttons { flex-direction: column; }
+      .header-buttons .btn { width: 100%; }
+      .nav-tabs { flex-direction: column; }
+    }
+
+  </style>
+</head>
+<body>
+  <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- SECURITY LOGIN MODAL -->
+  <div id="loginModal" class="modal">
+    <div class="modal-content" style="max-width: 380px; text-align: center;">
+      <img src="background.png" alt="Logo" class="logo" style="margin-bottom: 10px;" onerror="this.src='https://via.placeholder.com/75?text=Logo'">
+      <h3 style="margin-bottom: 5px; color: #1a73e8;">Administrator Login</h3>
+      <p style="font-size: 12px; color: #666; margin-bottom: 20px;">Mahad Salahuddin Al-Arabie Al-Islamie inc.</p>
+      
+      <form id="loginForm" onsubmit="checkLogin(event)">
+        <div class="form-group">
+          <label for="loginUsername">Username:</label>
+          <input type="text" id="loginUsername" placeholder="Enter username" required autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label for="loginPassword">Password:</label>
+          <input type="password" id="loginPassword" placeholder="Enter password" required>
+        </div>
+        <button type="submit" class="btn btn-submit" style="margin-top: 10px; font-size: 15px; padding: 12px;">Login</button>
+      </form>
+
+      <button type="button" class="btn public-entry-btn" onclick="openPublicEntryModal()">
+        + New Student Registration
+      </button>
+      <p class="public-entry-note">
+        Public registration is available before administrator login.
+      </p>
+    </div>
+  </div>
+
+  <!-- PUBLIC STUDENT ENTRY MODAL - AVAILABLE BEFORE LOGIN -->
+  <div id="publicEntryModal" class="modal">
+    <div class="modal-content" style="max-width: 600px;">
+      <h3 style="margin-bottom: 5px; color: #6f42c1;">New Student Registration</h3>
+      <p style="font-size: 12px; color: #666; margin-bottom: 18px;">
+        Register a new student without logging in.
+      </p>
+
+      <form id="publicStudentForm" onsubmit="savePublicStudent(event)">
+        <div class="form-group">
+          <label for="publicFullname">Full Name (First Middle Last)</label>
+          <input type="text" id="publicFullname" required>
+        </div>
+
+        <div class="form-group">
+          <label for="publicDob">Date of Birth</label>
+          <input type="date" id="publicDob" required>
+        </div>
+
+        <div class="form-group">
+          <label for="publicContact">Contact Number</label>
+          <input type="tel" id="publicContact" placeholder="+63" required>
+        </div>
+
+        <div class="form-group">
+          <label for="publicGrade">Grade / Class</label>
+          <select id="publicGrade" required>
+            <option value="">-- Select Grade --</option>
+            <option value="Grade 0">Grade 0</option>
+            <option value="Grade 1">Grade 1</option>
+            <option value="Grade 2">Grade 2</option>
+            <option value="Grade 3">Grade 3</option>
+            <option value="Grade 4">Grade 4</option>
+            <option value="Grade 5">Grade 5</option>
+            <option value="Grade 6">Grade 6</option>
+            <option value="Grade 7">Grade 7</option>
+            <option value="Grade 8">Grade 8</option>
+            <option value="Grade 9">Grade 9</option>
+            <option value="Grade 10">Grade 10</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="publicAddress">Address (Barangay, Maluso)</label>
+          <select id="publicAddress" required>
+            <option value="" disabled selected>-- Select Barangay --</option>
+            <option value="Abong-Abong">Abong-Abong</option>
+            <option value="Batungal">Batungal</option>
+            <option value="Calang Canas">Calang Canas</option>
+            <option value="Fuente Maluso">Fuente Maluso</option>
+            <option value="Gaunan North(Zone I)">Gaunan North(Zone I)</option>
+            <option value="Gaunan South(Zone II)">Gaunan South(Zone II)</option>
+            <option value="Limbubong">Limbubong</option>
+            <option value="Mahayahay Lower (Zone I)">Mahayahay Lower (Zone I)</option>
+            <option value="Mahayahay Upper (Zone II)">Mahayahay Upper (Zone II)</option>
+            <option value="Muslim Area">Muslim Area</option>
+            <option value="Port Holland Zone I Poblacion (Upper)">Port Holland Zone I Poblacion (Upper)</option>
+            <option value="Port Holland Zone II Poblacion (Shipyard Main)">Port Holland Zone II Poblacion (Shipyard Main)</option>
+            <option value="Port Holland Zone III Poblacion (Samal Village)">Port Holland Zone III Poblacion (Samal Village)</option>
+            <option value="Port Holland Zone IV (Lower)">Port Holland Zone IV (Lower)</option>
+            <option value="Port Holland Zone V (Shipyard Tabuk)">Port Holland Zone V (Shipyard Tabuk)</option>
+            <option value="Taberlongan">Taberlongan</option>
+            <option value="Tamuk">Tamuk</option>
+            <option value="Townsite (Poblacion)">Townsite (Poblacion)</option>
+            <option value="Tubigan">Tubigan</option>
+            <option value="Upper Garlayan">Upper Garlayan</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="publicEnrollment">Enrollment Fee</label>
+          <input type="number" id="publicEnrollment" placeholder="Enter amount" min="0" required>
+        </div>
+
+        <div class="form-group">
+          <label for="publicBalance">Balance</label>
+          <input type="number" id="publicBalance" placeholder="Enter balance" min="0" required>
+        </div>
+
+        <div class="form-group-checkbox">
+          <input type="checkbox" id="publicScholar">
+          <label for="publicScholar">Scholarship Student</label>
+        </div>
+
+        <div class="form-group-checkbox">
+          <input type="checkbox" id="publicPaid">
+          <label for="publicPaid">Payment Status (Checked = Paid)</label>
+        </div>
+
+        <div class="form-group">
+          <label for="publicStudentPhoto">Student Photo</label>
+          <input type="file" id="publicStudentPhoto" accept="image/*"
+                 onchange="handleImageUpload(event, 'public')">
+          <input type="hidden" id="publicPhotoBase64">
+          <div id="publicPhotoPreview" style="margin-top: 10px;"></div>
+        </div>
+
+        <div class="btn-container">
+          <button type="submit" class="btn btn-submit" style="flex:1;">
+            Submit Student Record
+          </button>
+          <button type="button" class="btn btn-danger" style="flex:1;"
+                  onclick="showLoginFromPublicEntry()">
+            Login
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MAIN APPLICATION -->
+  <div id="mainApp" class="container">
+    <div class="header-title">
+      <img src="background.png" alt="Logo" class="logo" onerror="this.src='https://via.placeholder.com/75?text=Logo'">
+      <div style="flex: 1;">
+        <h2>Mahad Salahuddin Al-Arabie Al-Islamie inc.</h2>
+        <p style="font-size: 13px; color: #666;">Student Data Management System</p>
+      </div>
+      <button class="btn btn-danger" onclick="logout()" style="padding: 6px 12px;">Logout</button>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="nav-tabs">
+      <button class="tab-btn active" onclick="switchTab('entry')">Student Registration</button>
+      <button class="tab-btn" onclick="switchTab('table')">Student Records</button>
+    </div>
+
+    <!-- SECTION 1: Student Registration (SUPABASE) -->
+    <div id="entrySection" class="view-section active">
+      <form id="studentForm" onsubmit="saveStudent(event)">
+        <div class="form-group">
+          <label for="fullname">Full Name (First Middle Last)</label>
+          <input type="text" id="fullname" name="fullname" placeholder="Enter full name" required>
+        </div>
+        <div class="form-group">
+          <label for="dob">Date of Birth</label>
+          <input type="date" id="dob" name="dob" required>
+        </div>
+        <div class="form-group">
+          <label for="contact">Contact Number</label>
+          <input type="tel" id="contact" name="contact" placeholder="+63" required>
+        </div>
+        <div class="form-group">
+          <label for="grade">Grade / Class</label>
+          <select id="grade" name="grade" required>
+            <option value="">-- Select Grade --</option>
+            <option value="Grade 0">Grade 0</option>
+            <option value="Grade 1">Grade 1</option>
+            <option value="Grade 2">Grade 2</option>
+            <option value="Grade 3">Grade 3</option>
+            <option value="Grade 4">Grade 4</option>
+            <option value="Grade 5">Grade 5</option>
+            <option value="Grade 6">Grade 6</option>
+            <option value="Grade 7">Grade 7</option>
+            <option value="Grade 8">Grade 8</option>
+            <option value="Grade 9">Grade 9</option>
+            <option value="Grade 10">Grade 10</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="address">Address (Barangay, Maluso):</label>
+          <select id="address" name="address" required>
+            <option value="" disabled selected>-- Select Barangay --</option>
+            <option value="Abong-Abong">Abong-Abong</option>
+            <option value="Batungal">Batungal</option>
+            <option value="Calang Canas">Calang Canas</option>
+            <option value="Fuente Maluso">Fuente Maluso</option>
+            <option value="Gaunan North(Zone I)">Gaunan North(Zone I)</option>
+            <option value="Gaunan South(Zone II)">Gaunan South(Zone II)</option>
+            <option value="Limbubong">Limbubong</option>
+            <option value="Mahayahay Lower (Zone I)">Mahayahay Lower (Zone I)</option>
+            <option value="Mahayahay Upper (Zone II)">Mahayahay Upper (Zone II)</option>
+            <option value="Muslim Area">Muslim Area</option>
+            <option value="Port Holland Zone I Poblacion (Upper)">Port Holland Zone I Poblacion (Upper)</option>
+            <option value="Port Holland Zone II Poblacion (Shipyard Main)">Port Holland Zone II Poblacion (Shipyard Main)</option>
+            <option value="Port Holland Zone III Poblacion (Samal Village)">Port Holland Zone III Poblacion (Samal Village)</option>
+            <option value="Port Holland Zone IV (Lower)">Port Holland Zone IV (Lower)</option>
+            <option value="Port Holland Zone V (Shipyard Tabuk)">Port Holland Zone V (Shipyard Tabuk)</option>
+            <option value="Taberlongan">Taberlongan</option>
+            <option value="Tamuk">Tamuk</option>
+            <option value="Townsite (Poblacion)">Townsite (Poblacion)</option>
+            <option value="Tubigan">Tubigan</option>
+            <option value="Upper Garlayan">Upper Garlayan</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="enrollment">Enrollment Fee</label>
+          <input type="number" id="enrollment" name="enrollment" placeholder="Enter amount" required>
+        </div>
+        <div class="form-group">
+          <label for="balance">Balance</label>
+          <input type="number" id="balance" name="balance" placeholder="Enter balance" required>
+        </div>
+        
+        <!-- Checkbox Inputs -->
+        <div class="form-group-checkbox">
+          <input type="checkbox" id="scholar" name="scholar" value="YES">
+          <label for="scholar">Scholarship Student</label>
+        </div>
+        <div class="form-group-checkbox">
+          <input type="checkbox" id="paid" name="paid" value="Paid">
+          <label for="paid">Payment Status (Checked = Paid)</label>
+        </div>
+
+        <div class="form-group">
+          <label for="studentPhoto">Student Photo</label>
+          <input type="file" id="studentPhoto" accept="image/*" onchange="handleImageUpload(event, 'entry')">
+          <input type="hidden" id="photoBase64" name="photoBase64">
+          <div id="photoPreview" style="margin-top: 10px;"></div>
+        </div>
+
+        <div class="btn-container">
+          <button type="submit" class="btn btn-submit">Submit Student Record</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- SECTION 2: Card Data -->
+    <div id="tableSection" class="view-section">
+      <div class="header-buttons">
+        <button class="btn btn-export" onclick="downloadCSV()">Export to CSV</button>
+        <button class="btn btn-excel" onclick="downloadExcel()">Export to Excel</button>
+      </div>
+
+      <input type="text" id="searchName" class="search-input" onkeyup="filterCards()" placeholder="Type student name to search...">
+
+      <div id="cardContainer" class="card-grid">
+        <!-- Rendered Cards -->
+      </div>
+    </div>
+  </div>
+
+  <!-- EDIT DATA MODAL POPUP -->
+  <div id="editModal" class="modal">
+    <div class="modal-content">
+      <h3 style="margin-bottom: 15px; color: #1a73e8;">Edit Student Record</h3>
+      <form id="editForm" onsubmit="updateStudent(event)">
+        <input type="hidden" id="editIndex">
+        
+        <div class="form-group">
+          <label for="editFullname">Full Name</label>
+          <input type="text" id="editFullname" required>
+        </div>
+        <div class="form-group">
+          <label for="editDob">Date of Birth</label>
+          <input type="date" id="editDob" required>
+        </div>
+        <div class="form-group">
+          <label for="editContact">Contact Number</label>
+          <input type="tel" id="editContact" required>
+        </div>
+        <div class="form-group">
+          <label for="editGrade">Grade / Class</label>
+          <select id="editGrade" required>
+            <option value="Grade 0">Grade 0</option>
+            <option value="Grade 1">Grade 1</option>
+            <option value="Grade 2">Grade 2</option>
+            <option value="Grade 3">Grade 3</option>
+            <option value="Grade 4">Grade 4</option>
+            <option value="Grade 5">Grade 5</option>
+            <option value="Grade 6">Grade 6</option>
+            <option value="Grade 7">Grade 7</option>
+            <option value="Grade 8">Grade 8</option>
+            <option value="Grade 9">Grade 9</option>
+            <option value="Grade 10">Grade 10</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="editAddress">Full Address</label>
+          <textarea id="editAddress" rows="2" required></textarea>
+        </div>
+        <div class="form-group">
+          <label for="editEnrollment">Enrollment Fee</label>
+          <input type="number" id="editEnrollment" required>
+        </div>
+        <div class="form-group">
+          <label for="editBalance">Balance</label>
+          <input type="number" id="editBalance" required>
+        </div>
+        
+        <!-- Checkbox Inputs Edit Modal -->
+        <div class="form-group-checkbox">
+          <input type="checkbox" id="editScholar">
+          <label for="editScholar">Scholarship Student</label>
+        </div>
+        <div class="form-group-checkbox">
+          <input type="checkbox" id="editPaid">
+          <label for="editPaid">Payment Status (Checked = Paid)</label>
+        </div>
+
+        <div class="form-group">
+          <label for="editStudentPhoto">Change Photo (Auto-compressed)</label>
+          <input type="file" id="editStudentPhoto" accept="image/*" onchange="handleImageUpload(event, 'edit')">
+          <input type="hidden" id="editPhotoBase64">
+          <div id="editPhotoPreview" style="margin-top: 10px;"></div>
+        </div>
+
+        <div class="btn-container">
+          <button type="submit" class="btn btn-submit" style="flex:1;">Save Changes</button>
+          <button type="button" class="btn btn-danger" style="flex:1;" onclick="closeEditModal()">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL VIEW PHOTO FULLSIZE -->
+  <div id="imageViewerModal" class="modal" onclick="closeImageViewer()">
+    <div class="modal-content">
+      <img id="fullImage" src="" alt="Full Photo Student">
+      <p style="color: white; margin-top: 10px; font-size: 13px;">Click anywhere to close</p>
+    </div>
+  </div>
+
+  <script>
+    /*
+      ===========================
+      SUPABASE CONFIGURATION
+      ===========================
+      Replace these two values with:
+      Supabase Dashboard -> Project Settings -> API
+      Project URL and Publishable/Anon Key.
+    */
+    const SUPABASE_URL = "https://lxygingezwbjdnjudvmj.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_BDLPk1-YB9PPq7gqgEdCIw_IMESdReU";
+
+    const supabaseConfigured =
+      SUPABASE_URL.startsWith("https://") &&
+      SUPABASE_ANON_KEY !== "YOUR_SUPABASE_ANON_KEY";
+
+    const supabaseClient = supabaseConfigured
+      ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+      : null;
+
+    let studentsCache = [];
+
+    function checkLogin(event) {
+      event.preventDefault();
+      const user = document.getElementById("loginUsername").value.trim();
+      const pass = document.getElementById("loginPassword").value.trim();
+
+      if (user === "KUN" && pass === "4444") {
+        sessionStorage.setItem("isLoggedIn", "true");
+        document.getElementById("loginModal").style.display = "none";
+        document.getElementById("mainApp").style.display = "block";
+        loadStudents();
+      } else {
+        showNotification("The username or password is incorrect. Please try again.", "error", "Login failed");
+      }
+    }
+
+    function logout() {
+      sessionStorage.removeItem("isLoggedIn");
+      location.reload();
+    }
+
+    // Normalize student names so "Ali Ahmad" and " ali   ahmad " are treated as the same name.
+
+    function showNotification(message, type = "info", title = "") {
+      const container = document.getElementById("toastContainer");
+      if (!container) {
+        console.error(`[${type}] ${title || "Notification"}:`, message);
+        return;
+      }
+
+      const titles = {
+        success: "Success",
+        error: "Something went wrong",
+        warning: "Please check",
+        info: "Information"
+      };
+
+      const icons = {
+        success: "✓",
+        error: "!",
+        warning: "!",
+        info: "i"
+      };
+
+      const toast = document.createElement("div");
+      toast.className = `toast ${type}`;
+
+      const safeMessage = escapeHTML(String(message)).replace(/\n/g, "<br>");
+      toast.innerHTML = `
+        <div class="toast-icon">${icons[type] || "i"}</div>
+        <div style="flex:1;">
+          <div class="toast-title">${escapeHTML(title || titles[type] || "Information")}</div>
+          <div class="toast-message">${safeMessage}</div>
+        </div>
+        <button class="toast-close" type="button" aria-label="Close notification">×</button>
+      `;
+
+      const close = () => {
+        toast.style.opacity = "0";
+        toast.style.transform = "translateY(-8px)";
+        setTimeout(() => toast.remove(), 180);
+      };
+
+      toast.querySelector(".toast-close").addEventListener("click", close);
+      container.appendChild(toast);
+
+      setTimeout(close, type === "error" ? 6000 : 4000);
+    }
+
+    function showConfirm(message, title = "Please confirm") {
+      return window.confirm(`${title}\n\n${message}`);
+    }
+
+    function normalizeStudentName(name) {
+      return String(name || "")
+        .trim()
+        .replace(/\s+/g, " ")
+        .toLowerCase();
+    }
+
+    function getLocalData() {
+      try {
+        return JSON.parse(localStorage.getItem("studentDatabase")) || [];
+      } catch {
+        return [];
+      }
+    }
+
+    function setLocalData(data) {
+      localStorage.setItem("studentDatabase", JSON.stringify(data));
+    }
+
+    async function loadStudents() {
+      if (!supabaseClient) {
+        studentsCache = getLocalData();
+        renderCards();
+        return;
+      }
+
+      try {
+        const { data, error } = await supabaseClient
+          .from("students")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+
+        studentsCache = data || [];
+        renderCards();
+      } catch (error) {
+        console.error("Supabase load error:", error);
+        showNotification("Student data could not be loaded from Supabase. Please check the project URL, key, table, and RLS policies.", "error", "Data loading failed");
+        studentsCache = getLocalData();
+        renderCards();
+      }
+    }
+
+    function handleImageUpload(event, mode) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      if (!file.type.startsWith("image/")) {
+        showNotification("Please select a valid image file.", "warning", "Invalid image");
+        event.target.value = "";
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.src = e.target.result;
+
+        img.onload = function() {
+          const canvas = document.createElement("canvas");
+          let width = img.width;
+          let height = img.height;
+
+          const MAX_SIZE = 400;
+
+          if (width > height) {
+            if (width > MAX_SIZE) {
+              height *= MAX_SIZE / width;
+              width = MAX_SIZE;
+            }
+          } else {
+            if (height > MAX_SIZE) {
+              width *= MAX_SIZE / height;
+              height = MAX_SIZE;
+            }
+          }
+
+          canvas.width = Math.round(width);
+          canvas.height = Math.round(height);
+
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+          let quality = 0.8;
+          let base64String = canvas.toDataURL("image/jpeg", quality);
+
+          while (base64String.length > 100 * 1024 && quality > 0.1) {
+            quality -= 0.1;
+            base64String = canvas.toDataURL("image/jpeg", quality);
+          }
+
+          if (mode === "entry") {
+            document.getElementById("photoBase64").value = base64String;
+            document.getElementById("photoPreview").innerHTML =
+              `<img src="${base64String}" class="photo-2x2" alt="Photo preview">`;
+          } else if (mode === "edit") {
+            document.getElementById("editPhotoBase64").value = base64String;
+            document.getElementById("editPhotoPreview").innerHTML =
+              `<img src="${base64String}" class="photo-2x2" alt="Photo preview">`;
+          } else if (mode === "public") {
+            document.getElementById("publicPhotoBase64").value = base64String;
+            document.getElementById("publicPhotoPreview").innerHTML =
+              `<img src="${base64String}" class="photo-2x2" alt="Photo preview">`;
+          }
+        };
+      };
+
+      reader.readAsDataURL(file);
+    }
+
+    function viewFullImage(src) {
+      if (!src || src.includes("placeholder")) return;
+      document.getElementById("fullImage").src = src;
+      document.getElementById("imageViewerModal").style.display = "flex";
+    }
+
+    function closeImageViewer() {
+      document.getElementById("imageViewerModal").style.display = "none";
+    }
+
+    function openPublicEntryModal() {
+      document.getElementById("loginModal").style.display = "none";
+      document.getElementById("mainApp").style.display = "none";
+      document.getElementById("publicEntryModal").style.display = "flex";
+    }
+
+    function closePublicEntryModal() {
+      document.getElementById("publicEntryModal").style.display = "none";
+    }
+
+    function showLoginFromPublicEntry() {
+      document.getElementById("publicEntryModal").style.display = "none";
+      document.getElementById("loginModal").style.display = "flex";
+      document.getElementById("mainApp").style.display = "none";
+    }
+
+    async function savePublicStudent(event) {
+      event.preventDefault();
+
+      const student = {
+        fullname: document.getElementById("publicFullname").value.trim(),
+        dob: document.getElementById("publicDob").value,
+        contact: document.getElementById("publicContact").value.trim(),
+        grade: document.getElementById("publicGrade").value,
+        address: document.getElementById("publicAddress").value,
+        enrollment: Number(document.getElementById("publicEnrollment").value || 0),
+        balance: Number(document.getElementById("publicBalance").value || 0),
+        scholar: document.getElementById("publicScholar").checked,
+        paid: document.getElementById("publicPaid").checked,
+        photo: document.getElementById("publicPhotoBase64").value || null
+      };
+
+      const submitButton = document.querySelector("#publicStudentForm button[type='submit']");
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = "Saving...";
+      }
+
+      try {
+        if (!supabaseClient) {
+          throw new Error("Supabase is not configured.");
+        }
+
+        // Check Supabase first so duplicate names are blocked even on different devices.
+        const normalizedName = normalizeStudentName(student.fullname);
+
+        const { data: existingStudents, error: checkError } = await supabaseClient
+          .from("students")
+          .select("id, fullname")
+          .ilike("fullname", student.fullname.trim());
+
+        if (checkError) throw checkError;
+
+        const duplicate = (existingStudents || []).some(
+          item => normalizeStudentName(item.fullname) === normalizedName
+        );
+
+        if (duplicate) {
+          showNotification(
+            "This student name is already registered. A duplicate name cannot be submitted.",
+            "warning",
+            "Duplicate student"
+          );
+          return;
+        }
+
+        const { error } = await supabaseClient
+          .from("students")
+          .insert([student]);
+
+        if (error) throw error;
+
+        showNotification("The new student record has been saved successfully.", "success", "Student submitted");
+        document.getElementById("publicStudentForm").reset();
+        document.getElementById("publicPhotoBase64").value = "";
+        document.getElementById("publicPhotoPreview").innerHTML = "";
+        closePublicEntryModal();
+
+      } catch (error) {
+        console.error("Public student insert error:", error);
+        showNotification(
+          "The record could not be saved. If this is an RLS or policy error, " +
+          "Supabase must allow INSERT for the public/anon role. " +
+          (error.message || error),
+          "error",
+          "Submission failed"
+        );
+      } finally {
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.textContent = "Submit Student Record";
+        }
+      }
+    }
+
+    function switchTab(tabName) {
+      const entryTab = document.getElementById("entrySection");
+      const tableTab = document.getElementById("tableSection");
+      const buttons = document.querySelectorAll(".tab-btn");
+
+      if (tabName === "entry") {
+        entryTab.classList.add("active");
+        tableTab.classList.remove("active");
+        buttons[0].classList.add("active");
+        buttons[1].classList.remove("active");
+      } else {
+        tableTab.classList.add("active");
+        entryTab.classList.remove("active");
+        buttons[1].classList.add("active");
+        buttons[0].classList.remove("active");
+        document.getElementById("searchName").value = "";
+        renderCards();
+      }
+    }
+
+    async function saveStudent(event) {
+      event.preventDefault();
+
+      const fullname = document.getElementById("fullname").value.trim();
+      const dob = document.getElementById("dob").value;
+      const contact = document.getElementById("contact").value.trim();
+      const grade = document.getElementById("grade").value;
+      const address = document.getElementById("address").value.trim();
+      const enrollment = Number(document.getElementById("enrollment").value || 0);
+      const balance = Number(document.getElementById("balance").value || 0);
+      const scholar = document.getElementById("scholar").checked;
+      const paid = document.getElementById("paid").checked;
+      const photo = document.getElementById("photoBase64").value || null;
+
+      const student = {
+        fullname,
+        dob,
+        contact,
+        grade,
+        address,
+        enrollment,
+        balance,
+        scholar,
+        paid,
+        photo
+      };
+
+      const submitButton = document.querySelector("#studentForm button[type='submit']");
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = "Saving...";
+      }
+
+      try {
+        if (supabaseClient) {
+          // Prevent duplicate student names in the main/admin entry form too.
+          const normalizedName = normalizeStudentName(student.fullname);
+
+          const { data: existingStudents, error: checkError } = await supabaseClient
+            .from("students")
+            .select("id, fullname")
+            .ilike("fullname", student.fullname.trim());
+
+          if (checkError) throw checkError;
+
+          const duplicate = (existingStudents || []).some(
+            item => normalizeStudentName(item.fullname) === normalizedName
+          );
+
+          if (duplicate) {
+            showNotification(
+              "This student name is already registered. A duplicate name cannot be added again.",
+              "warning",
+              "Duplicate student"
+            );
+            return;
+          }
+
+          const { data, error } = await supabaseClient
+            .from("students")
+            .insert([student])
+            .select()
+            .single();
+
+          if (error) throw error;
+
+          studentsCache.unshift(data);
+          setLocalData(studentsCache);
+
+          showNotification("The student record has been saved successfully.", "success", "Saved successfully");
+        } else {
+          studentsCache = getLocalData();
+          studentsCache.unshift({
+            ...student,
+            id: crypto.randomUUID ? crypto.randomUUID() : Date.now()
+          });
+          setLocalData(studentsCache);
+
+          showNotification("Supabase is not configured. The data was saved temporarily on this device.", "warning", "Local storage");
+        }
+
+        document.getElementById("studentForm").reset();
+        document.getElementById("photoBase64").value = "";
+        document.getElementById("photoPreview").innerHTML = "";
+        switchTab("table");
+        renderCards();
+      } catch (error) {
+        console.error("Supabase insert error:", error);
+        showNotification("The student record could not be saved: " + (error.message || error), "error", "Save failed");
+      } finally {
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.textContent = "Submit Student Record";
+        }
+      }
+    }
+
+    function escapeHTML(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function renderCards() {
+      const data = studentsCache || [];
+      const container = document.getElementById("cardContainer");
+      container.innerHTML = "";
+
+      if (data.length === 0) {
+        container.innerHTML = `<div class="search-notice">No student records available</div>`;
+        return;
+      }
+
+      const notice = document.createElement("div");
+      notice.id = "searchNotice";
+      notice.className = "search-notice";
+      notice.textContent =
+        "Search for a student name above to display a card.";
+      container.appendChild(notice);
+
+      data.forEach((student, index) => {
+        const photoSrc = student.photo || "https://via.placeholder.com/85?text=No+Photo";
+
+        const scholarValue =
+          student.scholar === true || student.scholar === "YES";
+        const paidValue =
+          student.paid === true || student.paid === "Paid";
+
+        const scholarDisplay = scholarValue
+          ? `<span class="status-checked">✓ YES</span>`
+          : `<span class="status-unchecked">✗ NO</span>`;
+
+        const paidDisplay = paidValue
+          ? `<span class="status-checked">✓ Paid</span>`
+          : `<span class="status-unchecked">✗ NO</span>`;
+
+        const card = document.createElement("div");
+        card.className = "student-card";
+
+        const safePhoto = escapeHTML(photoSrc);
+
+        card.innerHTML = `
+          <div>
+            <div class="card-header-info">
+              <img src="${safePhoto}" class="photo-2x2" alt="2x2 Photo"
+                   title="Click to view photo"
+                   onclick="viewFullImage(this.src)">
+              <div class="card-title">
+                <h3>${escapeHTML(student.fullname || "-")}</h3>
+                <p><strong>Grade:</strong> ${escapeHTML(student.grade || "-")}</p>
+                <p><strong>DOB:</strong> ${escapeHTML(student.dob || "-")}</p>
+                <p><strong>Contact:</strong> ${escapeHTML(student.contact || "-")}</p>
+                <p><strong>Address:</strong> ${escapeHTML(student.address || "-")}</p>
+              </div>
+            </div>
+            <div class="card-details">
+              <div><strong>Scholar:</strong> ${scholarDisplay}</div>
+              <div><strong>Paid Status:</strong> ${paidDisplay}</div>
+              <div><strong>Enrollment:</strong> ₱${Number(student.enrollment || 0).toLocaleString()}</div>
+              <div><strong>Balance:</strong> ₱${Number(student.balance || 0).toLocaleString()}</div>
+            </div>
+          </div>
+          <div class="card-actions">
+            <button class="btn btn-warning" onclick="openEditModal(${index})">Edit</button>
+            <button class="btn btn-danger" onclick="deleteStudent(${index})">Delete</button>
+          </div>
+        `;
+
+        container.appendChild(card);
+      });
+    }
+
+    function openEditModal(index) {
+      const data = studentsCache || [];
+      const student = data[index];
+
+      if (!student) return;
+
+      document.getElementById("editIndex").value = index;
+      document.getElementById("editFullname").value = student.fullname || "";
+      document.getElementById("editDob").value = student.dob || "";
+      document.getElementById("editContact").value = student.contact || "";
+      document.getElementById("editGrade").value = student.grade || "";
+      document.getElementById("editAddress").value = student.address || "";
+      document.getElementById("editEnrollment").value = student.enrollment ?? "";
+      document.getElementById("editBalance").value = student.balance ?? "";
+
+      document.getElementById("editScholar").checked =
+        student.scholar === true || student.scholar === "YES";
+      document.getElementById("editPaid").checked =
+        student.paid === true || student.paid === "Paid";
+
+      const photoSrc = student.photo || "";
+      document.getElementById("editPhotoBase64").value = photoSrc;
+
+      if (photoSrc) {
+        document.getElementById("editPhotoPreview").innerHTML =
+          `<img src="${escapeHTML(photoSrc)}" class="photo-2x2"
+                onclick="viewFullImage(this.src)" alt="Photo">`;
+      } else {
+        document.getElementById("editPhotoPreview").innerHTML = "";
+      }
+
+      document.getElementById("editModal").style.display = "flex";
+    }
+
+    function closeEditModal() {
+      document.getElementById("editModal").style.display = "none";
+    }
+
+    async function updateStudent(event) {
+      event.preventDefault();
+
+      const index = Number(document.getElementById("editIndex").value);
+      const oldStudent = studentsCache[index];
+
+      if (!oldStudent) return;
+
+      const updatedStudent = {
+        fullname: document.getElementById("editFullname").value.trim(),
+        dob: document.getElementById("editDob").value,
+        contact: document.getElementById("editContact").value.trim(),
+        grade: document.getElementById("editGrade").value,
+        address: document.getElementById("editAddress").value.trim(),
+        enrollment: Number(document.getElementById("editEnrollment").value || 0),
+        balance: Number(document.getElementById("editBalance").value || 0),
+        scholar: document.getElementById("editScholar").checked,
+        paid: document.getElementById("editPaid").checked,
+        photo: document.getElementById("editPhotoBase64").value || null
+      };
+
+      try {
+        if (supabaseClient) {
+          if (!oldStudent.id) {
+            throw new Error("Record does not have a Supabase ID.");
+          }
+
+          const { data, error } = await supabaseClient
+            .from("students")
+            .update(updatedStudent)
+            .eq("id", oldStudent.id)
+            .select()
+            .single();
+
+          if (error) throw error;
+
+          studentsCache[index] = data;
+          showNotification("The student record has been updated successfully.", "success", "Updated successfully");
+        } else {
+          studentsCache[index] = { ...oldStudent, ...updatedStudent };
+          showNotification("Supabase is not configured. The updated data is stored locally on this device.", "warning", "Local update");
+        }
+
+        setLocalData(studentsCache);
+        closeEditModal();
+        renderCards();
+        filterCards();
+      } catch (error) {
+        console.error("Supabase update error:", error);
+        showNotification("The student record could not be updated: " + (error.message || error), "error", "Update failed");
+      }
+    }
+
+    async function deleteStudent(index) {
+      if (!showConfirm("Are you sure you want to permanently delete this student record?", "Delete student")) return;
+
+      const student = studentsCache[index];
+      if (!student) return;
+
+      try {
+        if (supabaseClient) {
+          if (!student.id) throw new Error("Record does not have a Supabase ID.");
+
+          const { error } = await supabaseClient
+            .from("students")
+            .delete()
+            .eq("id", student.id);
+
+          if (error) throw error;
+        }
+
+        studentsCache.splice(index, 1);
+        setLocalData(studentsCache);
+        renderCards();
+        filterCards();
+
+        showNotification("The student record has been deleted successfully.", "success", "Deleted successfully");
+      } catch (error) {
+        console.error("Supabase delete error:", error);
+        showNotification("The student record could not be deleted: " + (error.message || error), "error", "Delete failed");
+      }
+    }
+
+    function filterCards() {
+      const input = document.getElementById("searchName").value.trim().toUpperCase();
+      const cards = document.querySelectorAll("#cardContainer .student-card");
+      const notice = document.getElementById("searchNotice");
+
+      if (input === "") {
+        if (notice) notice.style.display = "block";
+        cards.forEach(card => card.classList.remove("visible"));
+        return;
+      }
+
+      if (notice) notice.style.display = "none";
+
+      cards.forEach(card => {
+        const nameText =
+          card.querySelector(".card-title h3")?.textContent || "";
+
+        if (nameText.toUpperCase().includes(input)) {
+          card.classList.add("visible");
+        } else {
+          card.classList.remove("visible");
+        }
+      });
+    }
+
+    function getExportData() {
+      return (studentsCache || []).map((item, index) => ({
+        "No": index + 1,
+        "Full Name": item.fullname || "",
+        "Date of Birth": item.dob || "",
+        "Contact No": item.contact || "",
+        "Grade": item.grade || "",
+        "Address": item.address || "",
+        "Enrollment Fee": item.enrollment || 0,
+        "Balance": item.balance || 0,
+        "Scholar": item.scholar === true || item.scholar === "YES" ? "YES" : "NO",
+        "Paid Status": item.paid === true || item.paid === "Paid" ? "Paid" : "NO"
+      }));
+    }
+
+    function downloadCSV() {
+      const data = getExportData();
+
+      if (data.length === 0) {
+        showNotification("There is no student data available to export.", "warning", "Nothing to export");
+        return;
+      }
+
+      const headers = Object.keys(data[0]);
+      let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+      csvContent += headers.join(",") + "\n";
+
+      data.forEach(row => {
+        csvContent += headers.map(header => {
+          const value = String(row[header] ?? "").replace(/"/g, '""');
+          return `"${value}"`;
+        }).join(",") + "\n";
+      });
+
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", "student_database.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function downloadExcel() {
+      const data = getExportData();
+
+      if (data.length === 0) {
+        showNotification("There is no student data available to export.", "warning", "Nothing to export");
+        return;
+      }
+
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Student Data");
+
+      worksheet["!cols"] = [
+        { wch: 5 }, { wch: 25 }, { wch: 15 }, { wch: 15 },
+        { wch: 12 }, { wch: 30 }, { wch: 15 }, { wch: 12 },
+        { wch: 10 }, { wch: 12 }
+      ];
+
+      XLSX.writeFile(workbook, "student_database.xlsx");
+    }
+
+    document.addEventListener("keydown", function(event) {
+      if (event.key === "Escape") {
+        closePublicEntryModal();
+        closeEditModal();
+        closeImageViewer();
+      }
+    });
+
+    window.onload = function() {
+      if (sessionStorage.getItem("isLoggedIn") === "true") {
+        document.getElementById("publicEntryModal").style.display = "none";
+        document.getElementById("loginModal").style.display = "none";
+        document.getElementById("mainApp").style.display = "block";
+        loadStudents();
+      } else {
+        // First screen for visitors: Public New Student Registration.
+        document.getElementById("loginModal").style.display = "none";
+        document.getElementById("mainApp").style.display = "none";
+        document.getElementById("publicEntryModal").style.display = "flex";
+      }
+    };
+  </script>
+</body>
+</html>
